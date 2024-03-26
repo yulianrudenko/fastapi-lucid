@@ -7,7 +7,12 @@ services:
       context: ./web
       dockerfile: Dockerfile
     image: uvicorn
-    command: uvicorn --host 0.0.0.0 --port 80 --reload app.main:app
+    command:
+      - /bin/sh
+      - -c
+      - |
+        alembic upgrade head
+        uvicorn --host 0.0.0.0 --port 80 --reload app.main:app
     ports:
       - "80:80"
     volumes:
@@ -15,6 +20,9 @@ services:
     env_file:
       - .env
     restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
 
   db:
     container_name: db
@@ -28,6 +36,10 @@ services:
     env_file:
       - .env
     restart: "no"
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+      timeout: 10s
+      retries: 10
 
   cache:
     container_name: cache
@@ -35,10 +47,9 @@ services:
     restart: always
     ports:
       - "6379:6379"
-    volumes: 
+    volumes:
       - cache:/data
 
 volumes:
   mysql_db:
   cache:
-
